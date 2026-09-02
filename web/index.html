@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceAgent Lab 入会页</title>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<style>
+  body { font-family: -apple-system, "PingFang SC", sans-serif; margin: 20px; background:#16171a; color:#e9e7e2; }
+  #status { padding: 8px 12px; background:#23252b; border-radius:6px; margin:10px 0; font-size:14px; }
+  #grid { display:flex; flex-wrap:wrap; gap:12px; }
+  .tile { background:#000; border-radius:8px; overflow:hidden; width:420px; position:relative; }
+  .tile video { width:100%; display:block; }
+  .tile.audio-only { width:200px; height:120px; display:flex; align-items:center; justify-content:center; font-size:40px; }
+  .tile .name { position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.6); padding:2px 8px; border-radius:4px; font-size:13px; }
+  textarea { width:100%; height:60px; background:#23252b; color:#e9e7e2; border:1px solid #333; border-radius:6px; padding:6px; }
+  button { padding:8px 20px; border-radius:6px; border:none; background:#5a4fbf; color:#fff; font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.5; }
+</style>
+</head>
+<body>
+<h2>VoiceAgent Lab · 房间 day1</h2>
+<p>身份：<select id="who"><option value="eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAiZGV2a2V5IiwgInN1YiI6ICJ0b255IiwgIm5hbWUiOiAidG9ueSIsICJuYmYiOiAxNzg4MzU2MjQ5LCAiZXhwIjogMTc4ODk2MTA0OSwgInZpZGVvIjogeyJyb29tIjogImRheTEiLCAicm9vbUpvaW4iOiB0cnVlLCAiY2FuUHVibGlzaCI6IHRydWUsICJjYW5TdWJzY3JpYmUiOiB0cnVlfX0.y5OjULVOL7vLc6Ec8pucPAqHaekmTkCADH5szyZhSnc">tony</option><option value="eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAiZGV2a2V5IiwgInN1YiI6ICJndWVzdCIsICJuYW1lIjogImd1ZXN0IiwgIm5iZiI6IDE3ODgzNTYyNDksICJleHAiOiAxNzg4OTYxMDQ5LCAidmlkZW8iOiB7InJvb20iOiAiZGF5MSIsICJyb29tSm9pbiI6IHRydWUsICJjYW5QdWJsaXNoIjogdHJ1ZSwgImNhblN1YnNjcmliZSI6IHRydWV9fQ.ob0mg0eB98jtBM_H1dng6zdNROjpUkn4ah0WU_FoEeU">guest</option><option value="eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAiZGV2a2V5IiwgInN1YiI6ICJsaXN0ZW5lciIsICJuYW1lIjogImxpc3RlbmVyIiwgIm5iZiI6IDE3ODgzNTYyNDksICJleHAiOiAxNzg4OTYxMDQ5LCAidmlkZW8iOiB7InJvb20iOiAiZGF5MSIsICJyb29tSm9pbiI6IHRydWUsICJjYW5QdWJsaXNoIjogdHJ1ZSwgImNhblN1YnNjcmliZSI6IHRydWV9fQ.bhjjh7BPcg_TNa4xCOFu4JUrF9Wi5ocdR-p7_1dryNA">listener</option></select></p>
+<p><button id="join">加入房间（开摄像头+麦克风）</button></p>
+<div id="status">未连接</div>
+<div id="grid"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+window.onerror = (m) => { const s = document.getElementById("status"); if (s) s.textContent = "页面错误: " + m; };
+window.addEventListener("load", () => {
+  if (typeof LivekitClient === "undefined") setStatus("SDK 加载失败(CDN 不可达),请刷新重试");
+  else setStatus("SDK 就绪,选择身份后点加入");
+});
+
+
+const URL_ = "ws://" + location.hostname + ":7880";
+let room;
+
+function setStatus(t) { $("status").textContent = t; }
+
+function addTile(track, participant) {
+  const id = "tile-" + participant.identity + "-" + track.sid;
+  if ($(id)) return;
+  const div = document.createElement("div");
+  div.className = "tile"; div.id = id;
+  const el = track.attach();
+  div.appendChild(el);
+  const name = document.createElement("div");
+  name.className = "name"; name.textContent = participant.identity;
+  div.appendChild(name);
+  $("grid").appendChild(div);
+}
+
+function addAudioTile(participant) {
+  const id = "tile-audio-" + participant.identity;
+  if ($(id)) return;
+  const div = document.createElement("div");
+  div.className = "tile audio-only"; div.id = id;
+  div.textContent = "🔊";
+  const name = document.createElement("div");
+  name.className = "name"; name.textContent = participant.identity;
+  div.appendChild(name);
+  $("grid").appendChild(div);
+}
+
+$("join").onclick = async () => {
+  const token = $("who").value;
+  $("join").disabled = true;
+  try {
+    room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+    room
+      .on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, p) => {
+        if (track.kind === "video") addTile(track, p);
+        else { track.attach(); addAudioTile(p); }   // 语音 Agent 只有音频轨
+        setStatus(statusLine());
+      })
+      .on(LivekitClient.RoomEvent.ParticipantConnected, () => setStatus(statusLine()))
+      .on(LivekitClient.RoomEvent.ParticipantDisconnected, () => setStatus(statusLine()))
+      .on(LivekitClient.RoomEvent.Disconnected, (r) => setStatus("已断开: " + r));
+    await room.connect(URL_, token);
+    setStatus(statusLine());
+    try {
+      await room.localParticipant.enableCameraAndMicrophone();
+      const camPub = [...room.localParticipant.videoTrackPublications.values()][0];
+      if (camPub && camPub.track) addTile(camPub.track, room.localParticipant);
+    } catch (e) {
+      setStatus(statusLine() + "（本地摄像头/麦克风开启失败: " + e.message + "，仅观看模式）");
+    }
+  } catch (e) {
+    setStatus("连接失败: " + e.message);
+    $("join").disabled = false;
+  }
+};
+
+function statusLine() {
+  const n = room ? room.remoteParticipants.size + 1 : 0;
+  return "已连接 " + URL_ + " · 房间 " + (room ? room.name : "-") +
+         " · 在场 " + n + " 人（含自己）· 身份 " + (room ? room.localParticipant.identity : "-");
+}
+</script>
+</body>
+</html>

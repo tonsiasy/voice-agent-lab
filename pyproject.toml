@@ -1,0 +1,16 @@
+[project]
+name = "voice-agent-lab"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "av>=18.1.0",
+    "edge-tts>=7.2.8",
+    "faster-whisper>=1.2.1",
+    "livekit-agents>=1.7.1",
+    "livekit-plugins-openai>=1.7.1",
+    "livekit-plugins-silero>=1.7.1",
+    "onnxruntime==1.18.1",
+    "python-dotenv>=1.2.3",
+]
