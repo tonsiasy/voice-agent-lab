@@ -1,7 +1,9 @@
-"""Day 2 语音 Agent:LiveKit Agents 最小闭环。
+"""语音 Agent:LiveKit Agents 闭环（Day 3 起改用流式 ASR）。
 
-管道:silero VAD(本地) → faster-whisper STT(本地,自定义适配器)
+管道:silero VAD(本地) → sherpa-onnx 流式 ASR(本地,帧同步 RNN-T)
      → DeepSeek LLM(openai 兼容) → edge-tts TTS(免 key,自定义适配器)
+
+STT 可用 STT_BACKEND=whisper 切回 Day 2 的非流式实现做对照。
 
 运行:
     uv run python agent.py download-files   # 预下载 VAD/turn-detector 模型
@@ -23,6 +25,9 @@ from livekit import agents, rtc
 from livekit.agents import Agent, AgentSession, stt, tts, utils
 from livekit.plugins import openai, silero
 
+from sherpa_stt import SherpaStreamingSTT
+
+STT_BACKEND = os.environ.get("STT_BACKEND", "sherpa")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
 EDGE_VOICE = os.environ.get("EDGE_VOICE", "zh-CN-XiaoxiaoNeural")
 TTS_SAMPLE_RATE = 24000
@@ -96,11 +101,20 @@ class _EdgeChunkedStream(tts.ChunkedStream):
         output_emitter.flush()
 
 
+def _build_stt() -> agents.stt.STT:
+    """默认流式(Day 3);STT_BACKEND=whisper 可切回非流式做 A/B 对照。"""
+    if STT_BACKEND == "whisper":
+        print("[stt] 非流式 faster-whisper（对照组）", flush=True)
+        return FasterWhisperSTT()
+    print("[stt] 流式 sherpa-onnx zipformer", flush=True)
+    return SherpaStreamingSTT()
+
+
 async def entrypoint(ctx: agents.JobContext) -> None:
     await ctx.connect()
     session = AgentSession(
         vad=silero.VAD.load(),
-        stt=FasterWhisperSTT(),
+        stt=_build_stt(),
         llm=openai.LLM(
             model=os.environ.get("LLM_MODEL", "deepseek-chat"),
             base_url="https://api.deepseek.com/v1",
