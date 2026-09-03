@@ -4,3 +4,5 @@ __pycache__/
 *.log
 models/
 .playwright-mcp/
+bench/*.wav
+bench/sherpa-onnx-*/

@@ -13,4 +13,5 @@ dependencies = [
     "livekit-plugins-silero>=1.7.1",
     "onnxruntime==1.18.1",
     "python-dotenv>=1.2.3",
+    "sherpa-onnx>=1.13.7",
 ]
