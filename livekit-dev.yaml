@@ -5,5 +5,8 @@ rtc:
   port_range_end: 7892
   use_external_ip: false
   node_ip: 10.0.0.29
+  ips:
+    includes:
+      - 10.0.0.29/32
 keys:
   devkey: secret

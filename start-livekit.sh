@@ -15,6 +15,10 @@ cd "$(dirname "$0")"
 IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "127.0.0.1")
 echo "[start-livekit] 探测到当前局域网 IP: $IP"
 
+# Day 5 追加:把候选限制到 en0 的这一个 IPv4 地址。
+# 原因:macOS dummynet 对 IPv6 流的丢包/延迟整形有效,但带宽限制无效;
+# ICE 只在同地址族之间配对,服务端只给 IPv4 候选,媒体就必然走 IPv4,
+# 三个整形维度才都能施加。同时也顺带排除了 VPN 隧道接口。
 cat > livekit-dev.yaml <<EOF
 port: 7880
 rtc:
@@ -23,6 +27,9 @@ rtc:
   port_range_end: 7892
   use_external_ip: false
   node_ip: $IP
+  ips:
+    includes:
+      - $IP/32
 keys:
   devkey: secret
 EOF
